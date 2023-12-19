@@ -1,29 +1,35 @@
 package telran.spring.controller;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import telran.spring.service.calculatorService;
+import telran.exceptions.NotFoundException;
+import telran.spring.calculator.dto.OperationData;
+import telran.spring.service.CalculatorService;
 
 @RestController
 @RequestMapping("calculator")
 @RequiredArgsConstructor
 public class CalculatorController {
-final calculatorService CalculatorService;
-@GetMapping("sum/{op1}/{op2}")
-double sum(@PathVariable double op1, @PathVariable double op2) {
-	return CalculatorService.sum(op1, op2);
+final List<CalculatorService> calculatorServices;
+Map<String, CalculatorService> servicesMap;
+@PostConstruct
+void createServicesMap() {
+	servicesMap = calculatorServices.stream()
+			.collect(Collectors.toMap(service -> service.getCalculationType(), service -> service));
 }
-@GetMapping("divide/{op1}/{op2}")
-double divide(@PathVariable double op1, @PathVariable double op2) {
-	return CalculatorService.divide(op1, op2);
-}
-@GetMapping("substract/{op1}/{op2}")
-double substract(@PathVariable double op1, @PathVariable double op2) {
-	return CalculatorService.substract(op1, op2);
-}
-@GetMapping("multiply/{op1}/{op2}")
-double multiply(@PathVariable double op1, @PathVariable double op2) {
-	return CalculatorService.multiply(op1, op2);
+@PostMapping
+String calculate(@RequestBody @Valid OperationData operationData) {
+	String type = operationData.type();
+	CalculatorService calculatorService = servicesMap.get(type);
+	if(calculatorService == null) {
+		throw new NotFoundException(String.format("type %s not found", type));
+	}
+	return calculatorService.calculate(operationData);
 }
 }
